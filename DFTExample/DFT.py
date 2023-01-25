@@ -1,56 +1,68 @@
 from typing import Callable
 import math
 
+class ComplexAmplitude:
+    """
+    Комлпексная амплитуда
+    """
+
+    def __init__(self, freq: float, amplitude: float, phase: float, num: complex):
+        """
+        Коструктор:
+
+        Параметры:
+            freq - частота
+            amplitude - амплитуда
+            phase - фаза
+            num - комплексное число, описывающее амлитуду
+        """
+
+        self.__freq: float = freq
+        self.__amplitude: float = round(amplitude, 10) * 2
+        self.__phase: float = round(phase, 10) if self.amplitude != 0 else 0
+        self.__num: complex = num
+
+
+    @property
+    def freq(self) -> float:
+        """
+        Частота сигнала
+        """
+
+        return self.__freq
+
+
+    @property
+    def amplitude(self) -> float:
+        """
+        Амлитуда сигнала
+        """
+
+        return self.__amplitude
+
+
+    @property
+    def phase(self) -> float:
+        """
+        Фаза сигнала
+        """
+
+        return self.__phase
+
+
+    @property
+    def num(self) -> complex:
+        """
+        Комплексное число, описывающее амлитуду
+        """
+
+        return self.__num
+
+
 class DFT:
     """
     Класс для выполнения ДПФ
     """
-
-    class ComplexAmplitude:
-        """
-        Комлпексная амплитуда
-        """
-
-        def __init__(self, freq: float, amplitude: float, phase: float):
-            """
-            Коструктор:
-
-            Параметры:
-                freq - частота
-                amplitude - амплитуда
-                phase - фаза
-            """
-
-            self.__freq: float = freq
-            self.__amplitude: float = amplitude
-            self.__phase: float = phase
-
-
-        @property
-        def freq(self) -> float:
-            """
-            Частота сигнала
-            """
-
-            return self.__freq
-
-
-        @property
-        def amplitude(self) -> float:
-            """
-            Амлитуда сигнала
-            """
-
-            return self.__amplitude
-
-
-        @property
-        def phase(self) -> float:
-            """
-            Фаза сигнала
-            """
-
-            return self.__phase
 
 
     def __init__(self, T: int, SF: int, F: Callable):
@@ -75,8 +87,8 @@ class DFT:
         Запускает расчет ДПФ
         """
 
-        freqs: list[int] = self.__freqs()
-        result: list[float] = list()
+        freqs: list[float] = self.__freqs()
+        result: list[ComplexAmplitude] = list()
 
         for i, k in enumerate(range(self.N)):
             xk: complex = self.__xk(k)
@@ -84,7 +96,7 @@ class DFT:
             module = (1 / self.N) * math.sqrt(pow(xk.real, 2) + pow(xk.imag, 2))
             argument = math.atan2(xk.imag, xk.real)
 
-            result.append(DFT.ComplexAmplitude(freqs[i], module * 2, argument))
+            result.append(ComplexAmplitude(freqs[i], module, argument, xk))
 
         return result
 
@@ -123,3 +135,50 @@ class DFT:
                 f.append(i / ((1 / self.SF) * self.N))
 
         return f
+
+
+class InverseDFT:
+    """
+    Класс для выполнения обратного ДПФ.
+    """
+
+
+    def __init__(self, T: int, amplitudes: list[ComplexAmplitude]):
+        """
+        Коструктор
+
+        Параметры:
+            T - время измерения сигнала
+            amplitudes - комлпексные амплитуды исходного сигнала
+        """
+        self.T: int = T
+        self.N: int = len(amplitudes)
+        self.amplitudes: list[ComplexAmplitude] = amplitudes
+
+
+    def calculate(self) -> dict[float, float]:
+        """
+        Запускает расчет обратного ДПФ
+        """
+
+        result: dict[float, float] = dict()
+
+        times: list[float] = [i * self.T / self.N for i in range(self.N)]
+
+        for i in range(self.N):
+            result.update({times[i]: self.__xn(i).real})
+
+        return result
+
+
+    def __xn(self, n: int) -> complex:
+        """
+        Просчитывает значение сигнала в n-ой точке
+
+        Параметры:
+            n - номер точки
+
+        Возвращаемое значение: результат вычисления для переденного n
+        """
+
+        return (1 / self.N) * sum([self.amplitudes[i].num * pow(math.e, ((2 * math.pi * 1j) / self.N) * n * i) for i in range(0, self.N)])
